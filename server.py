@@ -1,12 +1,10 @@
-"""
-JARVIS AI Assistant V3 - Main Entry Point
-"""
-import sys
-import os
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+"""JARVIS AI Assistant V3 entrypoint."""
 
+from app.config import settings
 from app.main import app
+
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+    uvicorn.run(app, host=settings.HOST, port=settings.PORT)

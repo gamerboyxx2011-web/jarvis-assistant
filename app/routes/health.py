@@ -1,25 +1,17 @@
-"""
-JARVIS AI Assistant V3 - Health Check Route
-"""
+"""Health-check route."""
 
 from fastapi import APIRouter
+
 from app.config import settings
 
 router = APIRouter()
 
 
 @router.get("/health")
-async def health_check():
-    """
-    Health check endpoint.
-
-    Returns information about the application status and Gemini configuration.
-    """
-    gemini_configured = bool(settings.GEMINI_API_KEY and settings.GEMINI_API_KEY.strip())
-
+async def health_check() -> dict[str, str | bool]:
     return {
         "application": settings.APP_NAME,
         "version": settings.VERSION,
         "status": "healthy",
-        "gemini_configured": gemini_configured
+        "nvidia_configured": bool(settings.NVIDIA_API_KEY.strip()),
     }

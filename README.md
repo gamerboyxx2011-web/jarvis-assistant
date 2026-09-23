@@ -1,76 +1,47 @@
 # JARVIS AI Assistant V3
 
-A personal desktop-style AI assistant running locally through a web interface.
+A local, backend-only prototype for a personal AI assistant. Phase 1 provides a stable FastAPI API and NVIDIA NIM streaming chat integration. A frontend, persistence, and voice features are not implemented yet.
 
-## Technology Stack
+## Requirements
 
-- **Backend**: Python, FastAPI, Uvicorn
-- **Frontend**: HTML, CSS, Vanilla JavaScript (to be implemented in later phases)
-- **AI**: Gemini through OpenAI-compatible API
-- **Configuration**: Pydantic Settings
+- Python 3.10 or newer
+- A valid NVIDIA NIM API key from [NVIDIA Build](https://build.nvidia.com/)
 
-## Project Structure
+## Installation
 
-```
-jarvis-assistant-v3/
-├── server.py                 # Main entry point
-├── requirements.txt          # Python dependencies
-├── .env.example             # Environment variables template
-├── README.md                # This file
-├── PROJECT_STATE.md         # Development state tracking
-└── app/
-    ├── main.py              # FastAPI application setup
-    ├── config.py            # Configuration management
-    ├── ai/
-    │   └── client.py        # Gemini AI client abstraction
-    └── routes/
-        ├── health.py        # Health check endpoint
-        └── chat.py          # Chat endpoint with streaming
+```bash
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env
 ```
 
-## Getting Started
+Replace `your_nvidia_api_key_here` in `.env`. The application intentionally fails startup with a clear configuration error if the key is absent, blank, or still the placeholder.
 
-### Prerequisites
+Optional server settings are `HOST` and `PORT`. `server.py` honors both values.
 
-- Python 3.8+
-- Gemini API key (get from [Google AI Studio](https://makersuite.google.com/app/apikey))
-
-### Installation
-
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. Copy `.env.example` to `.env` and fill in your Gemini API key:
-   ```bash
-   cp .env.example .env
-   # Edit .env and add your actual GEMINI_API_KEY
-   ```
-
-### Running the Application
+## Running
 
 ```bash
 python server.py
 ```
 
-The server will start at http://localhost:8000
+With the example server settings, the API is available at `http://localhost:8000`.
 
-## API Endpoints
+## API
 
-### Health Check
-```
-GET /api/health
-```
-Returns application status and Gemini configuration status.
+### `GET /`
 
-### Chat
-```
-POST /api/chat
-```
-Accepts JSON with `message` field and returns a streaming response from Gemini AI.
+Returns a basic application status message.
 
-Example request:
+### `GET /api/health`
+
+Returns the application name, version, health status, and whether NVIDIA NIM is configured.
+
+### `POST /api/chat`
+
+Accepts:
+
 ```json
 {
   "message": "Hello, JARVIS!",
@@ -79,12 +50,40 @@ Example request:
 }
 ```
 
-Returns a Server-Sent Events stream with chunks of the AI response.
+Validation rules:
 
-## Development
+- `message`: nonblank string, up to 32,000 characters
+- `temperature`: number from `0.0` through `2.0`; default `0.7`
+- `max_tokens`: optional integer from `1` through `8192`
+- unknown request fields are rejected
 
-This is Phase 1 of the JARVIS AI Assistant V3 project. See `PROJECT_STATE.md` for current development status and future phases.
+Successful output remains an SSE stream of JSON content deltas:
 
-## License
+```text
+data: {"content": "Hello"}
 
-MIT
+data: [DONE]
+```
+
+Provider failures use a sanitized error event and the same single terminal marker:
+
+```text
+data: {"error": "AI provider request failed"}
+
+data: [DONE]
+```
+
+## Development and tests
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
+Tests use mocked NVIDIA responses and do not require or spend a real provider key.
+
+## Current scope
+
+Implemented: FastAPI, configuration, health API, stateless streaming chat, and NVIDIA NIM integration.
+
+Not implemented: frontend, conversation history, storage, STT, TTS, voice interaction, tools, authentication, CI, or desktop packaging.

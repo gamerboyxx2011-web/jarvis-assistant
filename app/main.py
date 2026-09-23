@@ -1,20 +1,20 @@
-"""
-JARVIS AI Assistant V3 - Main FastAPI Application
-"""
+"""JARVIS AI Assistant V3 FastAPI application."""
 
 from fastapi import FastAPI
-from app.routes import health, chat
+
+from app.config import settings
+from app.routes import chat, health
 
 app = FastAPI(
-    title="JARVIS AI Assistant V3",
+    title=settings.APP_NAME,
     description="A personal desktop-style AI assistant running locally",
-    version="0.1.0"
+    version=settings.VERSION,
 )
 
-# Include routers
 app.include_router(health.router, prefix="/api", tags=["health"])
 app.include_router(chat.router, prefix="/api", tags=["chat"])
 
+
 @app.get("/")
-async def root():
-    return {"message": "JARVIS AI Assistant V3 is running"}
+async def root() -> dict[str, str]:
+    return {"message": f"{settings.APP_NAME} is running"}

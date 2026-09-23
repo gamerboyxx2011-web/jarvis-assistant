@@ -1,36 +1,35 @@
-"""
-JARVIS AI Assistant V3 - Configuration Management
-"""
+"""JARVIS AI Assistant V3 configuration."""
 
-import os
-import sys
-from pydantic_settings import BaseSettings
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Application settings."""
+    """Application settings loaded from environment variables and ``.env``."""
 
-    # Application
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
     APP_NAME: str = "JARVIS AI Assistant V3"
     VERSION: str = "0.1.0"
 
-    # Server
     HOST: str = "0.0.0.0"
-    PORT: int = 8000
+    PORT: int = Field(default=8000, ge=1, le=65535)
 
-    # NVIDIA NIM API (OpenAI-compatible endpoint)
-    NVIDIA_API_KEY: str
+    NVIDIA_API_KEY: str = Field(min_length=1)
     NVIDIA_API_BASE_URL: str = "https://integrate.api.nvidia.com/v1"
     NVIDIA_MODEL: str = "nvidia/nemotron-3-super-120b-a12b"
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    @field_validator("NVIDIA_API_KEY")
+    @classmethod
+    def validate_nvidia_api_key(cls, value: str) -> str:
+        value = value.strip()
+        if not value or value == "your_nvidia_api_key_here":
+            raise ValueError("NVIDIA_API_KEY must contain a valid NVIDIA NIM API key")
+        return value
 
 
-# Global settings instance
 settings = Settings()
-
-# UNIQUE IDENTIFIER TO VERIFY THIS EXACT FILE IS LOADED
-print(f"=== LOADING CONFIG FROM: {__file__} ===", file=sys.stderr)
-print(f"=== LINE 8 SHOULD SHOW: from pydantic_settings import BaseSettings ===", file=sys.stderr)
