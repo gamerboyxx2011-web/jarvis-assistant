@@ -2,28 +2,57 @@ import json
 
 import pytest
 
-from app.ai.client import NVIDIAClient, NVIDIAClientError
+from app.errors import ProviderError
+from app.main import app
+from app.providers.models import ProviderChatRequest, ProviderDelta, ProviderInfo
+from app.routes.chat import get_chat_service
+from app.services.chat_service import ChatService
+
+
+class FakeProvider:
+    def __init__(self, items=()):
+        self.items = items
+        self.requests: list[ProviderChatRequest] = []
+
+    @property
+    def info(self):
+        return ProviderInfo("fake", "fake-model", True, frozenset(), frozenset())
+
+    async def stream_chat(self, request: ProviderChatRequest):
+        self.requests.append(request)
+        for item in self.items:
+            yield item
+
+
+def override_service(provider):
+    app.dependency_overrides[get_chat_service] = lambda: ChatService(provider)
+
+
+@pytest.fixture(autouse=True)
+def clear_dependency_overrides():
+    yield
+    app.dependency_overrides.clear()
 
 
 @pytest.mark.asyncio
-async def test_chat_streams_content_and_one_done(client, monkeypatch):
-    async def fake_completion(self, message, temperature=0.7, max_tokens=None):
-        assert message == "Hello"
-        assert temperature == 0.5
-        assert max_tokens == 25
-        yield {"choices": [{"delta": {"content": "Hi"}}]}
-        yield {"choices": [{"delta": {"content": " there"}}]}
+async def test_chat_streams_compatible_content_and_one_done(client):
+    provider = FakeProvider([ProviderDelta("Hi"), ProviderDelta(" there")])
+    override_service(provider)
 
-    monkeypatch.setattr(NVIDIAClient, "chat_completion", fake_completion)
     response = await client.post(
         "/api/chat",
         json={"message": " Hello ", "temperature": 0.5, "max_tokens": 25},
     )
+
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/event-stream")
     assert response.text.count("data: [DONE]") == 1
     assert f"data: {json.dumps({'content': 'Hi'})}" in response.text
     assert f"data: {json.dumps({'content': ' there'})}" in response.text
+    assert "response.started" not in response.text
+    assert "response.delta" not in response.text
+    assert "response.completed" not in response.text
+    assert provider.requests == [ProviderChatRequest("Hello", 0.5, 25)]
 
 
 @pytest.mark.asyncio
@@ -46,16 +75,27 @@ async def test_chat_rejects_invalid_requests(client, payload):
     assert response.status_code == 422
 
 
-@pytest.mark.asyncio
-async def test_provider_error_is_sanitized_and_done_once(client, monkeypatch):
-    async def failed_completion(self, message, temperature=0.7, max_tokens=None):
+class FailedProvider(FakeProvider):
+    async def stream_chat(self, request: ProviderChatRequest):
         if False:
-            yield {}
-        raise NVIDIAClientError("upstream secret diagnostic")
+            yield ProviderDelta("")
+        raise ProviderError("upstream secret diagnostic")
 
-    monkeypatch.setattr(NVIDIAClient, "chat_completion", failed_completion)
+
+@pytest.mark.asyncio
+async def test_provider_error_is_sanitized_and_done_once(client):
+    override_service(FailedProvider())
     response = await client.post("/api/chat", json={"message": "Hello"})
     assert response.status_code == 200
-    assert "AI provider request failed" in response.text
+    assert f"data: {json.dumps({'error': 'AI provider request failed'})}" in response.text
     assert "upstream secret diagnostic" not in response.text
+    assert "response.error" not in response.text
     assert response.text.count("data: [DONE]") == 1
+
+
+@pytest.mark.asyncio
+async def test_empty_provider_stream_still_finishes_once(client):
+    override_service(FakeProvider())
+    response = await client.post("/api/chat", json={"message": "Hello"})
+    assert response.status_code == 200
+    assert response.text == "data: [DONE]\n\n"
