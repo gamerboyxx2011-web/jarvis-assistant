@@ -37,7 +37,7 @@ async def test_nvidia_adapter_preserves_request_and_parses_stream():
     sent = route.calls.last.request
     assert sent.headers["authorization"] == "Bearer test-key"
     assert sent.headers["content-type"] == "application/json"
-    assert sent.url == "https://integrate.api.nvidia.com/v1/chat/completions"
+    assert str(sent.url) == "https://integrate.api.nvidia.com/v1/chat/completions"
     assert sent.content
     assert items == [
         ProviderDelta(content="Hello"),
