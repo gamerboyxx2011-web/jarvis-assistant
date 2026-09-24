@@ -4,3 +4,6 @@ __pycache__/
 *.pyc
 *.log
 *.backup
+jarvis_history.db
+jarvis_history.db-shm
+jarvis_history.db-wal
