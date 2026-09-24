@@ -17,11 +17,15 @@ Phase 3 adds durable, local conversation history while preserving the Phase 1 st
 - SQLite-backed conversation and message storage
 - Conversation create, list, detail, and delete endpoints
 - Optional `conversation_id` on `POST /api/chat`
-- Full prior message history passed through the provider-neutral request model
+- Conversation lookup before a history-associated chat request
 - Successful user/assistant exchanges persisted atomically after streaming completes
-- NVIDIA adapter support for multi-message context
+- Stored messages returned through the conversation detail endpoint
 - Stateless chat behavior remains backward compatible when `conversation_id` is omitted
 - Provider failures and cancelled streams do not persist incomplete assistant exchanges
+
+## Explicit scope boundary
+
+Phase 3 persists and returns conversation history but does not send prior messages to NVIDIA. Every provider request retains the Phase 2 single-current-message contract. Full-history context assembly is reserved for Phase 5.
 
 ## API additions
 
@@ -39,7 +43,7 @@ Phase 3 adds durable, local conversation history while preserving the Phase 1 st
 ## Verification
 
 - Conversation storage was smoke-tested across store re-instantiation.
-- History ordering, provider context construction, successful exchange persistence, and legacy stateless request compatibility were verified.
+- Conversation lookup, successful exchange persistence, single-current-message provider requests, and legacy stateless request compatibility were verified.
 - Source compilation passed.
 - The execution sandbox did not contain the repository's pytest/httpx development dependencies, so the full automated suite could not be executed there.
 

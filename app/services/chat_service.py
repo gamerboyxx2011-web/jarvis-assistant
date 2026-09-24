@@ -8,12 +8,7 @@ from app.errors import ProviderError
 from app.history.models import ConversationNotFoundError
 from app.history.store import SQLiteConversationStore
 from app.providers.base import ChatProvider
-from app.providers.models import (
-    ProviderChatRequest,
-    ProviderDelta,
-    ProviderMessage,
-    ProviderUsage,
-)
+from app.providers.models import ProviderChatRequest, ProviderDelta, ProviderUsage
 from app.schemas.chat import ChatRequest
 from app.schemas.events import (
     ResponseCompleted,
@@ -40,28 +35,21 @@ class ChatService:
         yield ResponseStarted()
         usage: Usage | None = None
         conversation_id = str(request.conversation_id) if request.conversation_id else None
-        history: tuple[ProviderMessage, ...] = ()
 
         if conversation_id is not None:
             if self._conversation_store is None:
                 yield ResponseError(message="Conversation history is unavailable")
                 return
             try:
-                conversation = await self._conversation_store.get(conversation_id)
+                await self._conversation_store.get(conversation_id)
             except ConversationNotFoundError:
                 yield ResponseError(message="Conversation not found")
                 return
-            history = tuple(
-                ProviderMessage(role=message.role, content=message.content)
-                for message in conversation.messages
-            )
 
-        messages = history + (ProviderMessage(role="user", content=request.message),)
         provider_request = ProviderChatRequest(
             message=request.message,
             temperature=request.temperature,
             max_tokens=request.max_tokens,
-            messages=messages if conversation_id is not None else (),
         )
         assistant_parts: list[str] = []
 

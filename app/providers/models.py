@@ -1,13 +1,6 @@
 """Provider-neutral request and stream models."""
 
 from dataclasses import dataclass
-from typing import Literal
-
-
-@dataclass(frozen=True, slots=True)
-class ProviderMessage:
-    role: Literal["user", "assistant"]
-    content: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -15,7 +8,6 @@ class ProviderChatRequest:
     message: str
     temperature: float = 0.7
     max_tokens: int | None = None
-    messages: tuple[ProviderMessage, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

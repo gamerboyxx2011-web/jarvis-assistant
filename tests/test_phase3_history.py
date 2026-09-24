@@ -39,7 +39,7 @@ async def test_store_persists_complete_exchange(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_service_sends_history_and_appends_exchange(tmp_path):
+async def test_service_looks_up_conversation_and_appends_exchange(tmp_path):
     store = SQLiteConversationStore(str(tmp_path / "history.db"))
     conversation = await store.create()
     await store.append_exchange(conversation.id, "first", "reply")
@@ -52,13 +52,11 @@ async def test_service_sends_history_and_appends_exchange(tmp_path):
         )
     ]
 
-    assert [(item.role, item.content) for item in provider.requests[0].messages] == [
+    assert provider.requests == [ProviderChatRequest("next")]
+    loaded = await store.get(conversation.id)
+    assert [(item.role, item.content) for item in loaded.messages] == [
         ("user", "first"),
         ("assistant", "reply"),
-        ("user", "next"),
-    ]
-    loaded = await store.get(conversation.id)
-    assert [(item.role, item.content) for item in loaded.messages][-2:] == [
         ("user", "next"),
         ("assistant", "answer"),
     ]

@@ -47,6 +47,8 @@ Create a conversation, then pass its ID to chat:
 }
 ```
 
+In Phase 3, `conversation_id` selects where the completed user/assistant exchange is persisted. Stored history is available through the conversation detail endpoint, but prior messages are not sent to NVIDIA; provider requests contain only the current `message`. Full-history context assembly is reserved for Phase 5.
+
 Omit `conversation_id` for the original stateless behavior. Chat responses keep the existing SSE contract:
 
 ```text
@@ -61,4 +63,4 @@ Provider failures remain sanitized and finish with one `[DONE]` marker.
 
 Implemented through Phase 3: stable FastAPI backend, provider/service boundaries, NVIDIA NIM streaming, and durable local conversation history.
 
-Not implemented: frontend, voice, tools, authentication, CI, or desktop packaging.
+Not implemented: frontend, voice, full-history model context, tools, authentication, CI, or desktop packaging.
