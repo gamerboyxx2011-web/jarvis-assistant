@@ -19,8 +19,6 @@ from app.providers.models import (
 
 
 class NVIDIAProvider:
-    """Stream provider-neutral chat items from NVIDIA NIM."""
-
     name = "nvidia"
 
     def __init__(
@@ -42,11 +40,11 @@ class NVIDIAProvider:
     @property
     def info(self) -> ProviderInfo:
         return ProviderInfo(
-            name=self.name,
-            model=self.model,
-            configured=bool(self.api_key.strip()),
-            supported_options=frozenset({"message", "temperature", "max_tokens"}),
-            capabilities=frozenset({"streaming", "usage"}),
+            self.name,
+            self.model,
+            bool(self.api_key.strip()),
+            frozenset({"message", "temperature", "max_tokens"}),
+            frozenset({"streaming", "usage", "conversation_history"}),
         )
 
     async def stream_chat(
@@ -55,13 +53,19 @@ class NVIDIAProvider:
         url = f"{self.base_url}/chat/completions"
         payload: dict[str, Any] = {
             "model": self.model,
-            "messages": [{"role": "user", "content": request.message}],
+            "messages": (
+                [
+                    {"role": item.role, "content": item.content}
+                    for item in request.messages
+                ]
+                if request.messages
+                else [{"role": "user", "content": request.message}]
+            ),
             "temperature": request.temperature,
             "stream": True,
         }
         if request.max_tokens is not None:
             payload["max_tokens"] = request.max_tokens
-
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
@@ -81,7 +85,6 @@ class NVIDIAProvider:
                         raise ProviderError(
                             f"NVIDIA NIM returned HTTP {response.status_code}"
                         )
-
                     async for line in response.aiter_lines():
                         if not line.startswith("data:"):
                             continue
@@ -90,28 +93,25 @@ class NVIDIAProvider:
                             break
                         if not data:
                             continue
-
                         try:
                             chunk = json.loads(data)
                         except json.JSONDecodeError:
                             continue
                         if not isinstance(chunk, dict):
                             continue
-
                         choices = chunk.get("choices", [])
                         if choices and isinstance(choices[0], dict):
                             delta = choices[0].get("delta", {})
                             if isinstance(delta, dict):
                                 content = delta.get("content", "")
                                 if isinstance(content, str) and content:
-                                    yield ProviderDelta(content=content)
-
+                                    yield ProviderDelta(content)
                         usage = chunk.get("usage")
                         if isinstance(usage, dict):
                             yield ProviderUsage(
-                                input_tokens=_optional_int(usage.get("prompt_tokens")),
-                                output_tokens=_optional_int(usage.get("completion_tokens")),
-                                total_tokens=_optional_int(usage.get("total_tokens")),
+                                _optional_int(usage.get("prompt_tokens")),
+                                _optional_int(usage.get("completion_tokens")),
+                                _optional_int(usage.get("total_tokens")),
                             )
         except asyncio.CancelledError:
             raise

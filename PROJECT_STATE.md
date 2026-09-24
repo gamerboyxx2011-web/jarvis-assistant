@@ -2,52 +2,56 @@
 
 ## Current phase
 
-**Phase 1 — Stabilize and establish an executable baseline**
+**Phase 3 — Conversation history (COMPLETED)**
 
-Phase 1 establishes a consistent, testable FastAPI backend while preserving the existing NVIDIA NIM streaming path.
+Phase 3 adds durable, local conversation history while preserving the Phase 1 streaming API and the Phase 2 provider/service boundaries.
 
-## Implemented baseline
+## Repository state found before Phase 3 work
 
-- FastAPI application with `GET /`, `GET /api/health`, and `POST /api/chat`
-- Environment configuration through Pydantic Settings
-- Fail-fast validation for a missing, blank, or placeholder NVIDIA API key
-- NVIDIA NIM integration through its OpenAI-compatible endpoint
-- Stateless SSE chat streaming with JSON content deltas and one `[DONE]` marker
-- Typed validation for message, temperature, and token limits
-- Sanitized client-facing provider errors
-- Configurable Uvicorn host and port
-- Automated tests with mocked provider traffic
+- `phase-3-conversation-history` existed but pointed to the exact Phase 2 head (`60cd815`).
+- There were no Phase 3 commits or partial Phase 3 source files on the branch.
+- `PROJECT_STATE.md` and `README.md` still described Phase 1, despite the completed Phase 2 provider and service boundaries.
 
-## Runtime requirements
+## Implemented in Phase 3
 
-- Python 3.10+
-- FastAPI
-- Uvicorn
-- HTTPX
-- Pydantic Settings
+- SQLite-backed conversation and message storage
+- Conversation create, list, detail, and delete endpoints
+- Optional `conversation_id` on `POST /api/chat`
+- Full prior message history passed through the provider-neutral request model
+- Successful user/assistant exchanges persisted atomically after streaming completes
+- NVIDIA adapter support for multi-message context
+- Stateless chat behavior remains backward compatible when `conversation_id` is omitted
+- Provider failures and cancelled streams do not persist incomplete assistant exchanges
 
-Development tests use pytest, pytest-asyncio, and respx.
+## API additions
 
-## API contract
+- `POST /api/conversations`
+- `GET /api/conversations`
+- `GET /api/conversations/{conversation_id}`
+- `DELETE /api/conversations/{conversation_id}`
 
-### `GET /api/health`
+`POST /api/chat` accepts the existing request plus optional `conversation_id`.
 
-Returns application identity, version, `healthy` status, and `nvidia_configured`.
+## Configuration
 
-### `POST /api/chat`
-
-Accepts one stateless message with optional temperature and maximum-token values. Successful provider deltas are returned as SSE `data:` records containing `{"content": "..."}`. Sanitized provider failures use `{"error": "AI provider request failed"}`. Every started stream ends with exactly one `[DONE]` marker.
+- `HISTORY_DB_PATH` controls the SQLite database path and defaults to `jarvis_history.db`.
 
 ## Verification
 
-The committed test suite covers configuration, health, request validation, mocked NVIDIA streams, sanitized failures, SSE framing, and terminal-marker behavior. Live-provider tests remain intentionally excluded from ordinary test runs.
+- Conversation storage was smoke-tested across store re-instantiation.
+- History ordering, provider context construction, successful exchange persistence, and legacy stateless request compatibility were verified.
+- Source compilation passed.
+- The execution sandbox did not contain the repository's pytest/httpx development dependencies, so the full automated suite could not be executed there.
 
-## Known limitations
+## Preserved behavior
 
-- No frontend
-- No conversation history or persistence
-- No STT, TTS, microphone, or voice session
-- No provider abstraction beyond the concrete NVIDIA client
-- No tools, authentication, CI, or desktop packaging
+- Existing health response and application version
+- Existing stateless `POST /api/chat` input and SSE output
+- Exactly one `[DONE]` marker per started stream
+- Sanitized provider errors
+- NVIDIA NIM default provider and Phase 2 provider/service abstractions
 
-These limitations belong to later roadmap phases and are not part of Phase 1.
+## Remaining limitations
+
+- No frontend, voice, tools, authentication, CI, or desktop packaging
+- No Phase 4 work has been started

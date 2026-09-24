@@ -1,16 +1,19 @@
 """Request schemas for the chat API."""
 
+from uuid import UUID
+
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ChatRequest(BaseModel):
-    """Validated input for a single stateless chat request."""
+    """Validated input for a chat request, optionally attached to history."""
 
     model_config = ConfigDict(extra="forbid")
 
     message: str = Field(min_length=1, max_length=32_000)
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     max_tokens: int | None = Field(default=None, ge=1, le=8_192)
+    conversation_id: UUID | None = None
 
     @field_validator("message")
     @classmethod

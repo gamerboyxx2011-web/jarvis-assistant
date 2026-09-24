@@ -1,4 +1,4 @@
-"""Stateless streaming chat route."""
+"""Streaming chat route with optional conversation history."""
 
 import asyncio
 import json
@@ -8,6 +8,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 
+from app.history.dependencies import get_conversation_store
+from app.history.store import SQLiteConversationStore
 from app.providers.registry import provider_registry
 from app.schemas.chat import ChatRequest
 from app.schemas.events import ResponseDelta, ResponseError
@@ -17,9 +19,10 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-def get_chat_service() -> ChatService:
-    """Build the request service using the registry's default provider."""
-    return ChatService(provider_registry.create())
+def get_chat_service(
+    store: Annotated[SQLiteConversationStore, Depends(get_conversation_store)],
+) -> ChatService:
+    return ChatService(provider_registry.create(), store)
 
 
 @router.post("/chat")
@@ -27,8 +30,6 @@ async def chat_endpoint(
     request: ChatRequest,
     service: Annotated[ChatService, Depends(get_chat_service)],
 ) -> StreamingResponse:
-    """Serialize internal chat events into the stable public SSE contract."""
-
     async def generate_response():
         try:
             async for event in service.stream_chat(request):
@@ -46,8 +47,5 @@ async def chat_endpoint(
     return StreamingResponse(
         generate_response(),
         media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-        },
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
     )
