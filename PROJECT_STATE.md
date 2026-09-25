@@ -18,6 +18,8 @@ Phase 4 adds a same-origin browser interface over the completed Phase 3 backend 
 - Safe message rendering with text content rather than HTML injection
 - Same-origin static delivery through FastAPI
 - Static/API regression tests without browser automation dependencies
+- User messages persist before provider streaming; assistant messages persist only after successful, non-empty completion
+- Cancellation and provider failures leave no partial assistant message in history
 
 ## Deliberate frontend-stack deviation
 Phase 4 deliberately uses vanilla HTML, CSS, and JavaScript instead of React/Vite. This keeps the phase dependency-free, avoids a separate build pipeline, and matches the approved text-only scope. A framework migration is not part of Phase 4.

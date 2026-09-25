@@ -42,6 +42,9 @@ class ChatService:
                 return
             try:
                 await self._conversation_store.get(conversation_id)
+                await self._conversation_store.append_message(
+                    conversation_id, "user", request.message
+                )
             except ConversationNotFoundError:
                 yield ResponseError(message="Conversation not found")
                 return
@@ -73,10 +76,11 @@ class ChatService:
             yield ResponseError(message="Internal chat error")
             return
 
-        if conversation_id is not None and assistant_parts:
+        assistant_content = "".join(assistant_parts)
+        if conversation_id is not None and assistant_content:
             try:
-                await self._conversation_store.append_exchange(
-                    conversation_id, request.message, "".join(assistant_parts)
+                await self._conversation_store.append_message(
+                    conversation_id, "assistant", assistant_content
                 )
             except ConversationNotFoundError:
                 yield ResponseError(message="Conversation not found")

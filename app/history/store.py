@@ -7,6 +7,7 @@ import sqlite3
 from collections.abc import Sequence
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Literal
 from uuid import uuid4
 
 from app.history.models import Conversation, ConversationNotFoundError, Message
@@ -96,6 +97,37 @@ class SQLiteConversationStore:
                 for item in message_rows
             ),
         )
+
+    async def append_message(
+        self,
+        conversation_id: str,
+        role: Literal["user", "assistant"],
+        content: str,
+    ) -> None:
+        await asyncio.to_thread(self._append_message, conversation_id, role, content)
+
+    def _append_message(
+        self,
+        conversation_id: str,
+        role: Literal["user", "assistant"],
+        content: str,
+    ) -> None:
+        timestamp = _utc_now()
+        with self._connect() as connection:
+            exists = connection.execute(
+                "SELECT 1 FROM conversations WHERE id = ?", (conversation_id,)
+            ).fetchone()
+            if exists is None:
+                raise ConversationNotFoundError(conversation_id)
+            connection.execute(
+                "INSERT INTO messages (conversation_id, role, content, created_at) "
+                "VALUES (?, ?, ?, ?)",
+                (conversation_id, role, content, timestamp),
+            )
+            connection.execute(
+                "UPDATE conversations SET updated_at = ? WHERE id = ?",
+                (timestamp, conversation_id),
+            )
 
     async def append_exchange(
         self, conversation_id: str, user_content: str, assistant_content: str
