@@ -1,52 +1,31 @@
 # JARVIS AI Assistant V3
 
-A local FastAPI personal assistant with NVIDIA NIM streaming chat, SQLite conversation history, full-history model context, and a same-origin text web interface.
+A local FastAPI personal assistant with NVIDIA NIM streaming chat, SQLite full-history conversations, a same-origin web interface, and controlled push-to-talk voice mode.
 
 ## Requirements
 - Python 3.10+
 - NVIDIA NIM API key
+- OpenAI API key for hosted STT/TTS
+- Browser support for `getUserMedia` and `MediaRecorder`
 
-## Installation
+## Setup and run
 ```bash
 python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+source venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
-```
-Replace the placeholder API key in `.env`. Optional settings are `HOST`, `PORT`, and `HISTORY_DB_PATH`.
-
-## Running and tests
-```bash
 python server.py
+```
+Set `NVIDIA_API_KEY` and `OPENAI_API_KEY`. Speech defaults are `whisper-1`, `tts-1`, voice `alloy`, and MP3 output; the `OPENAI_*` variables are configurable.
+
+Open `http://localhost:8000/app`. Chat mode retains the text-only `POST /api/chat` flow. Voice mode records only while push-to-talk is held, stops at 60 seconds, and sends one finalized recording to the dedicated multipart `POST /api/voice` SSE pipeline.
+
+Recordings are limited to 25 MB, held only for the request, and never persisted. The finalized transcript and completed assistant text use the existing ChatService conversation/full-history behavior. TTS emits ordered sentence or bounded-phrase audio; TTS failure preserves generated text and history.
+
+## Test
+```bash
 pip install -r requirements-dev.txt
 pytest
 ```
-Open `http://localhost:8000/app` for the web interface. The original `GET /` JSON response remains available.
 
-## API
-- `GET /`
-- `GET /app`
-- `GET /api/health`
-- `POST /api/conversations`
-- `GET /api/conversations`
-- `GET /api/conversations/{conversation_id}`
-- `DELETE /api/conversations/{conversation_id}`
-- `POST /api/chat`
-
-The frontend creates and selects conversations, loads persisted messages, consumes the existing SSE stream, and deletes conversations. It sends only the current message plus optional `conversation_id`:
-```json
-{"message":"Hello, JARVIS!","conversation_id":"3d90e211-377c-486d-a23a-7c01b9b4a555"}
-```
-For conversation-backed chat, the service loads persisted messages in chronological order and sends that history plus the current user message exactly once to NVIDIA. Stateless chat sends only the current user message.
-
-The SSE contract remains:
-```text
-data: {"content": "Hello"}
-
-data: [DONE]
-```
-
-## Current scope
-Implemented through Phase 5: stable provider/service boundaries, NVIDIA NIM streaming, durable local conversation history, full-history model context, and a dependency-free vanilla HTML/CSS/JavaScript text interface.
-
-Not implemented: voice, tools, authentication, browser automation, CI, or desktop packaging.
+Implemented through Phase 6. Wake words, always-listening/VAD, realtime voice, tools, desktop packaging, and Phase 7+ behavior are out of scope.
