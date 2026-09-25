@@ -1,11 +1,17 @@
 import asyncio
+import json
 
 import httpx
 import pytest
 import respx
 
 from app.errors import ProviderError, ProviderTimeoutError
-from app.providers.models import ProviderChatRequest, ProviderDelta, ProviderUsage
+from app.providers.models import (
+    ProviderChatRequest,
+    ProviderDelta,
+    ProviderMessage,
+    ProviderUsage,
+)
 from app.providers.nvidia import NVIDIAProvider
 
 
@@ -29,7 +35,15 @@ async def test_nvidia_adapter_preserves_request_and_parses_stream():
         )
     )
     provider = NVIDIAProvider(api_key="test-key")
-    request = ProviderChatRequest("Hi", temperature=0.25, max_tokens=42)
+    request = ProviderChatRequest(
+        "Hi",
+        temperature=0.25,
+        max_tokens=42,
+        history=(
+            ProviderMessage("user", "Earlier question"),
+            ProviderMessage("assistant", "Earlier answer"),
+        ),
+    )
 
     items = [item async for item in provider.stream_chat(request)]
 
@@ -38,7 +52,12 @@ async def test_nvidia_adapter_preserves_request_and_parses_stream():
     assert sent.headers["authorization"] == "Bearer test-key"
     assert sent.headers["content-type"] == "application/json"
     assert str(sent.url) == "https://integrate.api.nvidia.com/v1/chat/completions"
-    assert sent.content
+    payload = json.loads(sent.content)
+    assert payload["messages"] == [
+        {"role": "user", "content": "Earlier question"},
+        {"role": "assistant", "content": "Earlier answer"},
+        {"role": "user", "content": "Hi"},
+    ]
     assert items == [
         ProviderDelta(content="Hello"),
         ProviderUsage(input_tokens=2, output_tokens=3, total_tokens=5),
@@ -47,13 +66,15 @@ async def test_nvidia_adapter_preserves_request_and_parses_stream():
 
 @pytest.mark.asyncio
 @respx.mock
-async def test_nvidia_adapter_omits_optional_max_tokens():
+async def test_nvidia_adapter_omits_optional_max_tokens_and_sends_one_stateless_message():
     route = respx.post("https://integrate.api.nvidia.com/v1/chat/completions").mock(
         return_value=httpx.Response(200, text="data: [DONE]\n\n")
     )
     provider = NVIDIAProvider(api_key="test-key")
     _ = [item async for item in provider.stream_chat(ProviderChatRequest("Hi"))]
-    assert b"max_tokens" not in route.calls.last.request.content
+    payload = json.loads(route.calls.last.request.content)
+    assert "max_tokens" not in payload
+    assert payload["messages"] == [{"role": "user", "content": "Hi"}]
 
 
 @pytest.mark.asyncio
@@ -102,8 +123,6 @@ class _CancelledClient:
 
 @pytest.mark.asyncio
 async def test_nvidia_adapter_preserves_cancellation():
-    provider = NVIDIAProvider(
-        api_key="test-key", client_factory=lambda: _CancelledClient()
-    )
+    provider = NVIDIAProvider(api_key="test-key", client_factory=lambda: _CancelledClient())
     with pytest.raises(asyncio.CancelledError):
         _ = [item async for item in provider.stream_chat(ProviderChatRequest("Hi"))]

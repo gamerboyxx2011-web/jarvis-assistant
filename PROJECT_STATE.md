@@ -1,45 +1,37 @@
 # JARVIS AI Assistant V3 — Project State
 
 ## Current phase
-**Phase 4 — Text web interface (COMPLETED)**
+**Phase 5 — Full-history model context (COMPLETED)**
 
-Phase 4 adds a same-origin browser interface over the completed Phase 3 backend while preserving all Phase 1–3 API and persistence behavior.
+Phase 5 adds persisted multi-turn conversation context to provider requests while preserving the completed Phase 1–4 API, frontend, streaming, and persistence behavior.
 
 ## Branch baseline
-- Branch: `phase-4-web-frontend`
-- Created directly from `phase-3-conversation-history` at `bc4f8b16e8224e152fd5d0f289e639e0fb90bc73`
-- Phase 3 was not merged into `main`.
+- Branch: `phase-5-full-history-context`
+- Created directly from `phase-4-web-frontend` at `6c887c6a671f4a34fc99ba912d604cb9611c7367`
+- Earlier phase branches remain unmerged into `main`.
 
-## Implemented in Phase 4
-- Responsive, accessible text chat interface at `/app`
-- Conversation create, list, select, reload, and delete flows
-- Incremental parsing of the existing `POST /api/chat` SSE response
-- Stream cancellation and stale-update protection when switching conversations
-- Safe message rendering with text content rather than HTML injection
-- Same-origin static delivery through FastAPI
-- Static/API regression tests without browser automation dependencies
-- User messages persist before provider streaming; assistant messages persist only after successful, non-empty completion
-- Cancellation and provider failures leave no partial assistant message in history
-
-## Deliberate frontend-stack deviation
-Phase 4 deliberately uses vanilla HTML, CSS, and JavaScript instead of React/Vite. This keeps the phase dependency-free, avoids a separate build pipeline, and matches the approved text-only scope. A framework migration is not part of Phase 4.
+## Implemented in Phase 5
+- Minimal provider-neutral history messages with `user` and `assistant` roles
+- Chronological persisted history supplied for conversation-backed chat
+- Current user message added to provider context exactly once
+- NVIDIA serialization into the OpenAI-compatible `messages` array
+- Stateless chat remains a single current-user message
+- Focused service and NVIDIA adapter regression coverage
 
 ## Preserved behavior and boundaries
-- Original `GET /` JSON response
-- Existing health and conversation APIs
-- Existing `/api/chat` request validation and SSE wire format
+- User messages persist before provider streaming starts
+- Assistant messages persist only after successful, non-empty completion
+- Cancellation and provider failures leave no partial assistant message in history
+- Existing request validation and SSE wire format
 - Exactly one `[DONE]` marker per started stream
 - Provider/service abstractions and sanitized provider errors
-- SQLite conversation persistence and stateless chat compatibility
-- Frontend sends only the current message and optional `conversation_id`; previous messages are not sent to NVIDIA
+- SQLite schema and conversation APIs
+- Responsive dependency-free Phase 4 frontend
 
 ## Verification
-- User-provided Phase 3 baseline: 38/38 tests passing locally
-- Python source compilation passed
-- JavaScript syntax check passed
-- Desktop frontend render completed without console or resource errors
-- The sandbox lacked the repository's pytest/httpx development dependencies, so the full automated suite and new static/API tests must be run in the project environment
-- Manual browser verification remains required for desktop/mobile layout, real streaming, reload persistence, deletion, dark mode, and keyboard interaction
+- Phase 4 baseline: 49/49 local tests passing with browser verification completed
+- Complete automated suite must pass after the Phase 5 additions
+- Manual browser verification is not required for the backend-only context change; an optional live NVIDIA multi-turn smoke test can confirm remote model behavior
 
 ## Explicit scope boundary
-No voice, tools, authentication, browser automation, desktop packaging, or Phase 5 work is included. Full-history model context remains Phase 5.
+No frontend redesign, database migration, authentication, voice, tools, browser automation, desktop packaging, Phase 6 work, or later-phase work is included.

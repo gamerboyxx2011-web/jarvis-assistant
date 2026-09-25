@@ -53,9 +53,14 @@ class NVIDIAProvider:
         self, request: ProviderChatRequest
     ) -> AsyncIterator[ProviderStreamItem]:
         url = f"{self.base_url}/chat/completions"
+        messages = [
+            {"role": message.role, "content": message.content}
+            for message in request.history
+        ]
+        messages.append({"role": "user", "content": request.message})
         payload: dict[str, Any] = {
             "model": self.model,
-            "messages": [{"role": "user", "content": request.message}],
+            "messages": messages,
             "temperature": request.temperature,
             "stream": True,
         }

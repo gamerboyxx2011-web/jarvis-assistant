@@ -1,6 +1,6 @@
 # JARVIS AI Assistant V3
 
-A local FastAPI personal assistant with NVIDIA NIM streaming chat, SQLite conversation history, and a same-origin text web interface.
+A local FastAPI personal assistant with NVIDIA NIM streaming chat, SQLite conversation history, full-history model context, and a same-origin text web interface.
 
 ## Requirements
 - Python 3.10+
@@ -21,7 +21,7 @@ python server.py
 pip install -r requirements-dev.txt
 pytest
 ```
-Open `http://localhost:8000/app` for the Phase 4 web interface. The original `GET /` JSON response remains available.
+Open `http://localhost:8000/app` for the web interface. The original `GET /` JSON response remains available.
 
 ## API
 - `GET /`
@@ -37,15 +37,16 @@ The frontend creates and selects conversations, loads persisted messages, consum
 ```json
 {"message":"Hello, JARVIS!","conversation_id":"3d90e211-377c-486d-a23a-7c01b9b4a555"}
 ```
+For conversation-backed chat, the service loads persisted messages in chronological order and sends that history plus the current user message exactly once to NVIDIA. Stateless chat sends only the current user message.
+
 The SSE contract remains:
 ```text
 data: {"content": "Hello"}
 
 data: [DONE]
 ```
-Prior messages are stored and displayed but are not sent to NVIDIA. Full-history model context remains reserved for Phase 5.
 
 ## Current scope
-Implemented through Phase 4: stable provider/service boundaries, NVIDIA NIM streaming, durable local conversation history, and a dependency-free vanilla HTML/CSS/JavaScript text interface.
+Implemented through Phase 5: stable provider/service boundaries, NVIDIA NIM streaming, durable local conversation history, full-history model context, and a dependency-free vanilla HTML/CSS/JavaScript text interface.
 
-Not implemented: voice, full-history model context, tools, authentication, browser automation, CI, or desktop packaging.
+Not implemented: voice, tools, authentication, browser automation, CI, or desktop packaging.
