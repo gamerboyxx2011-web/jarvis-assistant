@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from typing import Literal
 
+from app.providers.model_catalog import DEFAULT_MODEL_ID
+
 
 @dataclass(frozen=True, slots=True)
 class ProviderMessage:
@@ -16,6 +18,7 @@ class ProviderChatRequest:
     temperature: float = 0.7
     max_tokens: int | None = None
     history: tuple[ProviderMessage, ...] = ()
+    model: str = DEFAULT_MODEL_ID
 
 
 @dataclass(frozen=True, slots=True)

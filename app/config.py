@@ -1,6 +1,7 @@
 """JARVIS AI Assistant V3 configuration."""
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from app.providers.model_catalog import DEFAULT_MODEL_ID
 class Settings(BaseSettings):
     model_config=SettingsConfigDict(env_file=".env",env_file_encoding="utf-8",extra="ignore")
     APP_NAME:str="JARVIS AI Assistant V3"
@@ -10,7 +11,7 @@ class Settings(BaseSettings):
     HISTORY_DB_PATH:str="jarvis_history.db"
     NVIDIA_API_KEY:str=Field(min_length=1)
     NVIDIA_API_BASE_URL:str="https://integrate.api.nvidia.com/v1"
-    NVIDIA_MODEL:str="nvidia/nemotron-3-super-120b-a12b"
+    NVIDIA_MODEL:str=DEFAULT_MODEL_ID
     OPENAI_API_KEY:str=""
     OPENAI_API_BASE_URL:str="https://api.openai.com/v1"
     OPENAI_STT_MODEL:str="whisper-1"

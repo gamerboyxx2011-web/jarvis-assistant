@@ -3,36 +3,18 @@
 import asyncio
 import logging
 from collections.abc import AsyncIterator
-
 from app.errors import ProviderError
 from app.history.models import ConversationNotFoundError
 from app.history.store import SQLiteConversationStore
 from app.providers.base import ChatProvider
-from app.providers.models import (
-    ProviderChatRequest,
-    ProviderDelta,
-    ProviderMessage,
-    ProviderUsage,
-)
+from app.providers.models import ProviderChatRequest, ProviderDelta, ProviderMessage, ProviderUsage
 from app.schemas.chat import ChatRequest
-from app.schemas.events import (
-    ResponseCompleted,
-    ResponseDelta,
-    ResponseError,
-    ResponseEvent,
-    ResponseStarted,
-    Usage,
-)
-
+from app.schemas.events import ResponseCompleted, ResponseDelta, ResponseError, ResponseEvent, ResponseStarted, Usage
 logger = logging.getLogger(__name__)
 
 
 class ChatService:
-    def __init__(
-        self,
-        provider: ChatProvider,
-        conversation_store: SQLiteConversationStore | None = None,
-    ) -> None:
+    def __init__(self, provider: ChatProvider, conversation_store: SQLiteConversationStore | None = None) -> None:
         self._provider = provider
         self._conversation_store = conversation_store
 
@@ -41,41 +23,26 @@ class ChatService:
         usage: Usage | None = None
         conversation_id = str(request.conversation_id) if request.conversation_id else None
         history: tuple[ProviderMessage, ...] = ()
-
         if conversation_id is not None:
             if self._conversation_store is None:
                 yield ResponseError(message="Conversation history is unavailable")
                 return
             try:
                 conversation = await self._conversation_store.get(conversation_id)
-                history = tuple(
-                    ProviderMessage(message.role, message.content)
-                    for message in conversation.messages
-                )
-                await self._conversation_store.append_message(
-                    conversation_id, "user", request.message
-                )
+                history = tuple(ProviderMessage(message.role, message.content) for message in conversation.messages)
+                await self._conversation_store.append_message(conversation_id, "user", request.message)
             except ConversationNotFoundError:
                 yield ResponseError(message="Conversation not found")
                 return
-
-        provider_request = ProviderChatRequest(
-            message=request.message,
-            temperature=request.temperature,
-            max_tokens=request.max_tokens,
-            history=history,
-        )
+        provider_request = ProviderChatRequest(message=request.message, temperature=request.temperature, max_tokens=request.max_tokens, history=history, model=request.model)
         assistant_parts: list[str] = []
-
         try:
             async for item in self._provider.stream_chat(provider_request):
                 if isinstance(item, ProviderDelta):
                     assistant_parts.append(item.content)
                     yield ResponseDelta(content=item.content)
                 elif isinstance(item, ProviderUsage):
-                    usage = Usage(
-                        item.input_tokens, item.output_tokens, item.total_tokens
-                    )
+                    usage = Usage(item.input_tokens, item.output_tokens, item.total_tokens)
         except asyncio.CancelledError:
             raise
         except ProviderError as exc:
@@ -86,15 +53,11 @@ class ChatService:
             logger.error("Unexpected chat service failure")
             yield ResponseError(message="Internal chat error")
             return
-
         assistant_content = "".join(assistant_parts)
         if conversation_id is not None and assistant_content:
             try:
-                await self._conversation_store.append_message(
-                    conversation_id, "assistant", assistant_content
-                )
+                await self._conversation_store.append_message(conversation_id, "assistant", assistant_content)
             except ConversationNotFoundError:
                 yield ResponseError(message="Conversation not found")
                 return
-
         yield ResponseCompleted(usage=usage)

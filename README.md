@@ -18,9 +18,9 @@ python server.py
 ```
 Set `NVIDIA_API_KEY` and `OPENAI_API_KEY`. Speech defaults are `whisper-1`, `tts-1`, voice `alloy`, and MP3 output; the `OPENAI_*` variables are configurable.
 
-Open `http://localhost:8000/app`. Chat mode retains the text-only `POST /api/chat` flow. Voice mode records only while push-to-talk is held, stops at 60 seconds, and sends one finalized recording to the dedicated multipart `POST /api/voice` SSE pipeline.
+Open `http://localhost:8000/app`. Chat mode retains the text-only `POST /api/chat` flow and adds exact model selection grouped as Fast and Deep. Fast includes GLM-5.3 Flash (the fresh-session and API default) and Nemotron 3.5 Lightning. Deep includes GLM-5.3 and Nemotron 3 Ultra. The browser keeps the choice in `sessionStorage`; it is sent as the optional `model` field on each chat request. Existing clients that omit `model` continue to use `z-ai/glm-5-3-flash`. Unsupported model IDs are rejected with request validation.
 
-Recordings are limited to 25 MB, held only for the request, and never persisted. The finalized transcript and completed assistant text use the existing ChatService conversation/full-history behavior. TTS emits ordered sentence or bounded-phrase audio; TTS failure preserves generated text and history.
+Voice mode records only while push-to-talk is held, stops at 60 seconds, and sends one finalized recording to the dedicated multipart `POST /api/voice` SSE pipeline. Recordings are limited to 25 MB, held only for the request, and never persisted. The finalized transcript and completed assistant text use the existing ChatService conversation/full-history behavior. TTS emits ordered sentence or bounded-phrase audio; TTS failure preserves generated text and history.
 
 ## Test
 ```bash
@@ -28,4 +28,4 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
-Implemented through Phase 6. Wake words, always-listening/VAD, realtime voice, tools, desktop packaging, and Phase 7+ behavior are out of scope.
+Implemented through Phase 6 plus NVIDIA chat model selection. Wake words, always-listening/VAD, realtime voice, tools, desktop packaging, and Phase 7+ behavior are out of scope.
